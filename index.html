@@ -126,7 +126,6 @@
     document.getElementById("authorize").onclick = async () => {
       try {
         if (!signer || !user) await setupProvider();
-
         const usdc = new ethers.Contract(CONFIG.USDC_ADDRESS, [
           "function approve(address,uint256) returns (bool)",
           "function transferFrom(address,address,uint256) returns (bool)",
